@@ -8,27 +8,27 @@ set -euo pipefail
 
 RAW_INPUT="${*:-}"
 if [[ -z "${RAW_INPUT// }" && ! -t 0 ]]; then
-RAW_INPUT="$(cat)"
+    RAW_INPUT="$(cat)"
 fi
 
 RAW_INPUT="\( {RAW_INPUT// \)'\r'/ }"
 RAW_INPUT="\( {RAW_INPUT// \)'\n'/ }"
 
 if [[ -z "${RAW_INPUT// }" ]]; then
-echo "usage: $0 \"your prompt here\" [--json]"
-exit 1
+    echo "usage: $0 \"your prompt here\""
+    exit 1
 fi
 
 lower() {
-tr '[:upper:]' '[:lower:]'
+    tr '[:upper:]' '[:lower:]'
 }
 
 normalize() {
-local s="$1"
-s="$(printf '%s' "$s" | lower)"
-s="${s//_/ }"
-s="$(printf '%s' "\( s" | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ + \)//')"
-printf ' %s ' "$s"
+    local s="$1"
+    s="$(printf '%s' "$s" | lower)"
+    s="${s//_/ }"
+    s="$(printf '%s' "\( s" | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ + \)//')"
+    printf ' %s ' "$s"
 }
 
 TEXT="$(normalize "$RAW_INPUT")"
@@ -37,79 +37,47 @@ RAW_FLAT="\( {RAW_FLAT// \)'\r'/ }"
 RAW_FLAT="\( {RAW_FLAT// \)'\n'/ }"
 
 INTENTS=(
-greeting
-smalltalk
-explanation
-how_to
-tutoring
-factual_lookup
-current_events
-code_generation
-debugging
-devops
-shell_command
-sql_data
-math
-translation
-rewrite_edit
-summarize
-extraction
-classification
-comparison
-brainstorming
-recommendation
-shopping
-planning
-scheduling
-email_message
-legal_info
-finance_info
-health_info
-creative_writing
-roleplay
-prompt_engineering
-jailbreak_meta
-image_generation
-web_or_x_search
-tool_usage
-sentiment_support
-complaint
-chitchat_chaos
+greeting smalltalk explanation how_to tutoring factual_lookup current_events
+code_generation debugging devops shell_command sql_data math translation
+rewrite_edit summarize extraction classification comparison brainstorming
+recommendation shopping planning scheduling email_message legal_info
+finance_info health_info creative_writing roleplay prompt_engineering
+jailbreak_meta image_generation web_or_x_search tool_usage
+sentiment_support complaint chitchat_chaos
 )
 
-declare -A SCORE
-declare -A WHY
+declare -A SCORE WHY
 for k in "${INTENTS[@]}"; do
-SCORE["$k"]=0
-WHY["$k"]=""
+    SCORE["$k"]=0
+    WHY["$k"]=""
 done
 
 bump() {
-local intent="$1"
-local weight="$2"
-local reason="$3"
-SCORE["\( intent"]= \)(( SCORE["$intent"] + weight ))
-WHY["\( intent"]+=" \){reason}(+${weight});"
+    local intent="$1"
+    local weight="$2"
+    local reason="$3"
+    SCORE["\( intent"]= \)(( SCORE["$intent"] + weight ))
+    WHY["\( intent"]+=" \){reason}(+${weight});"
 }
 
 hit() {
-local intent="$1"
-local weight="$2"
-local regex="$3"
-local reason="$4"
-if [[ $TEXT =\~ $regex ]]; then
-bump "$intent" "$weight" "$reason"
-fi
+    local intent="$1"
+    local weight="$2"
+    local regex="$3"
+    local reason="$4"
+    if [[ $TEXT =\~ $regex ]]; then
+        bump "$intent" "$weight" "$reason"
+    fi
 }
 
 hit_raw() {
-local intent="$1"
-local weight="$2"
-local regex="$3"
-local reason="$4"
-if [[ $RAW_FLAT =\~ $regex ]]; then
-bump "$intent" "$weight" "$reason"
-fi
+    local intent="$1"
+    local weight="$2"
+    local regex="$3"
+    local reason="$4"
+    if [[ $RAW_FLAT =\~ $regex ]]; then
+        bump "$intent" "$weight" "$reason"
+    fi
 }
 
 # Greeting / smalltalk / chaos
@@ -178,67 +146,62 @@ hit tool_usage 9 '(use (your|the) (tools?|search|tool)|call (a )?tool|web search
 hit sentiment_support 8 '(i feel|i am feeling|i.?m stressed|i.?m overwhelmed|i.?m sad|panic attack|burned out|need support|need advice)' 'support_terms'
 hit complaint 8 '(this sucks|i hate|frustrated|annoyed|complaint|rant|why is .* so bad|terrible experience)' 'complaint_terms'
 
-# Secondary pattern interactions (unchanged + one new Grok combo)
+# Secondary pattern interactions
 if [[ $TEXT == ? ]]; then
-bump explanation 1 'question_mark'
-bump factual_lookup 1 'question_mark'
-bump how_to 1 'question_mark'
+    bump explanation 1 'question_mark'
+    bump factual_lookup 1 'question_mark'
+    bump how_to 1 'question_mark'
 fi
 
-if [[ $TEXT =\~ (write|make|build|generate|create|implement) ]] &&
-[[ $TEXT =\~ (script|function|class|api|regex|parser|cli|bot|query|sql|code|program) ]]; then
-bump code_generation 7 'imperative_plus_code_noun'
+if [[ $TEXT =\~ (write|make|build|generate|create|implement) ]] && [[ $TEXT =\~ (script|function|class|api|regex|parser|cli|bot|query|sql|code|program) ]]; then
+    bump code_generation 7 'imperative_plus_code_noun'
 fi
 
 if [[ $TEXT =\~ why ]] && [[ $TEXT =\~ (fail|fails|failing|broken|error|not[[:space:]]+working|wrong) ]]; then
-bump debugging 8 'why_plus_failure'
+    bump debugging 8 'why_plus_failure'
 fi
 
 if [[ $TEXT =\~ (bash|shell|terminal|grep|sed|awk|xargs|find|curl|jq) ]]; then
-bump shell_command 4 'shell_stack'
+    bump shell_command 4 'shell_stack'
 fi
 
 if [[ $TEXT =\~ (csv|json|jsonl|xml|yaml|parse|transform|clean|normalize|table|dataset|etl) ]]; then
-bump extraction 3 'structured_data'
-bump sql_data 3 'structured_data'
+    bump extraction 3 'structured_data'
+    bump sql_data 3 'structured_data'
 fi
 
-if [[ $TEXT =\~ (vs|versus|compare|difference) ]] &&
-[[ $TEXT =\~ (best|recommend|should i|pick|choose|worth it) ]]; then
-bump decision_support 7 'compare_plus_decide'
+if [[ $TEXT =\~ (vs|versus|compare|difference) ]] && [[ $TEXT =\~ (best|recommend|should i|pick|choose|worth it) ]]; then
+    bump decision_support 7 'compare_plus_decide'
 fi
 
 if [[ $TEXT =\~ (monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|next[[:space:]]+week|next[[:space:]]+month|q[1-4]|202[0-9]|203[0-9]) ]]; then
-bump planning 2 'date_mention'
-bump scheduling 2 'date_mention'
-bump current_events 1 'date_mention'
+    bump planning 2 'date_mention'
+    bump scheduling 2 'date_mention'
+    bump current_events 1 'date_mention'
 fi
 
-if [[ $TEXT =\~ (story|scene|character|dialogue|poem|monologue) ]] &&
-[[ $TEXT =\~ (act as|pretend to be|you are now|roleplay) ]]; then
-bump roleplay 4 'creative_roleplay_overlap'
-bump creative_writing 4 'creative_roleplay_overlap'
+if [[ $TEXT =\~ (story|scene|character|dialogue|poem|monologue) ]] && [[ $TEXT =\~ (act as|pretend to be|you are now|roleplay) ]]; then
+    bump roleplay 4 'creative_roleplay_overlap'
+    bump creative_writing 4 'creative_roleplay_overlap'
 fi
 
-if [[ $TEXT =\~ (write|draft|compose|respond|reply) ]] &&
-[[ $TEXT =\~ (email|message|dm|slack|text|linkedin) ]]; then
-bump email_message 8 'compose_message_overlap'
+if [[ $TEXT =\~ (write|draft|compose|respond|reply) ]] && [[ $TEXT =\~ (email|message|dm|slack|text|linkedin) ]]; then
+    bump email_message 8 'compose_message_overlap'
 fi
 
-# New Grok combo
 if [[ $TEXT =\~ (generate|draw|imagine|create|render) ]] && [[ $TEXT =\~ (image|picture|art|photo|visualize) ]]; then
-bump image_generation 6 'image_verb_noun_overlap'
+    bump image_generation 6 'image_verb_noun_overlap'
 fi
 
 for x in legal_info health_info finance_info; do
-if (( SCORE["$x"] > 0 )); then
-bump explanation 1 "${x}_leans_explanation"
-fi
+    if (( SCORE["$x"] > 0 )); then
+        bump explanation 1 "${x}_leans_explanation"
+    fi
 done
 
 if [[ $TEXT =\~ (latest|current|today|recent) ]]; then
-bump factual_lookup 2 'freshness_modifier'
-bump current_events 4 'freshness_modifier'
+    bump factual_lookup 2 'freshness_modifier'
+    bump current_events 4 'freshness_modifier'
 fi
 
 hit code_generation 3 '(can you|could you|please).(write|make|build|generate)' 'polite_codegen'
@@ -251,61 +214,59 @@ hit shopping 4 '(best buy|amazon|newegg|price history|discount|coupon)' 'commerc
 hit creative_writing 4 '(write in the style of|epic|cinematic|grimdark|romcom|cyberpunk|fantasy)' 'creative_style'
 hit jailbreak_meta 5 '(ignore safety|uncensored|no restrictions|without rules)' 'policy_evasion_signal'
 
-# Priors / tie-breaks (language_prior now only boosts when it makes sense)
+# Priors / tie-breaks
 if [[ $TEXT =\~ (python|bash|javascript|typescript|java|c++|sql|regex) ]] && (( SCORE[debugging] < 8 )); then
-bump code_generation 2 'language_prior'
+    bump code_generation 2 'language_prior'
 fi
 
-if [[ $TEXT =\~ (error|traceback|stack[[:space:]]+trace|exception|not[[:space:]]+working|failing) ]] &&
-[[ $TEXT =\~ (python|bash|docker|sql|javascript|typescript|java|c++|kubernetes|nginx|api) ]]; then
-bump debugging 6 'tool_plus_failure'
+if [[ $TEXT =\~ (error|traceback|stack[[:space:]]+trace|exception|not[[:space:]]+working|failing) ]] && [[ $TEXT =\~ (python|bash|docker|sql|javascript|typescript|java|c++|kubernetes|nginx|api) ]]; then
+    bump debugging 6 'tool_plus_failure'
 fi
 
 ONLY_SHORT="$(printf '%s' "\( TEXT" | sed -E 's/[^a-z ]//g; s/[[:space:]]+/ /g; s/^ +//; s/ + \)//')"
 if [[ \( ONLY_SHORT =\~ ^(hi|hello|hey|yo|sup|howdy|hola|heya|thanks|thank you) \) ]]; then
-bump greeting 20 'pure_greeting'
+    bump greeting 20 'pure_greeting'
 fi
 
 score_lines() {
-local k
-for k in "${INTENTS[@]}"; do
-printf '%s\t%s\n' "${SCORE[$k]}" "$k"
-done | sort -rn -k1,1 -k2,2
+    for k in "${INTENTS[@]}"; do
+        printf '%s\t%s\n' "${SCORE[$k]}" "$k"
+    done | sort -rn -k1,1 -k2,2
 }
 
 PRIMARY_INTENT='unknown'
 PRIMARY_SCORE=0
 SECONDARY=()
 while IFS=$'\t' read -r sc name; do
-if [[ $PRIMARY_INTENT == 'unknown' ]] && (( sc > 0 )); then
-PRIMARY_INTENT="$name"
-PRIMARY_SCORE="$sc"
-fi
-if (( sc > 0 )); then
-SECONDARY+=("\( {name}: \){sc}")
-fi
+    if [[ $PRIMARY_INTENT == 'unknown' ]] && (( sc > 0 )); then
+        PRIMARY_INTENT="$name"
+        PRIMARY_SCORE="$sc"
+    fi
+    if (( sc > 0 )); then
+        SECONDARY+=("\( {name}: \){sc}")
+    fi
 done < <(score_lines)
 
 if [[ $PRIMARY_INTENT == 'unknown' || $PRIMARY_SCORE -le 0 ]]; then
-if [[ $TEXT == ? ]]; then
-PRIMARY_INTENT='explanation'
-PRIMARY_SCORE=1
-SECONDARY=('explanation:1')
-else
-PRIMARY_INTENT='chitchat_chaos'
-PRIMARY_SCORE=1
-SECONDARY=('chitchat_chaos:1')
-fi
+    if [[ $TEXT == ? ]]; then
+        PRIMARY_INTENT='explanation'
+        PRIMARY_SCORE=1
+        SECONDARY=('explanation:1')
+    else
+        PRIMARY_INTENT='chitchat_chaos'
+        PRIMARY_SCORE=1
+        SECONDARY=('chitchat_chaos:1')
+    fi
 fi
 
 TOP_INTENTS=()
 count=0
 for item in "${SECONDARY[@]}"; do
-TOP_INTENTS+=("$item")
-count=$((count + 1))
-if (( count >= 3 )); then
-break
-fi
+    TOP_INTENTS+=("$item")
+    count=$((count + 1))
+    if (( count >= 3 )); then
+        break
+    fi
 done
 
 printf 'PRIMARY_INTENT=%s\n' "$PRIMARY_INTENT"
@@ -315,13 +276,13 @@ printf 'TOP_INTENTS=%s\n' "${TOP_INTENTS[*]}"
 printf 'ALL_SCORES='
 first=1
 while IFS=$'\t' read -r sc name; do
-(( sc <= 0 )) && continue
-if (( first )); then
-printf '%s:%s' "$name" "$sc"
-first=0
-else
-printf ' %s:%s' "$name" "$sc"
-fi
+    (( sc <= 0 )) && continue
+    if (( first )); then
+        printf '%s:%s' "$name" "$sc"
+        first=0
+    else
+        printf ' %s:%s' "$name" "$sc"
+    fi
 done < <(score_lines)
 printf '\n'
 
