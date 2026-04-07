@@ -1,77 +1,101 @@
 #!/usr/bin/env bash
-Grok-tuned degen intent classifier v2
-Original: Rfwalsh1998 (Unlicense / public domain)
-Tweaks: balanced code gen, Grok-specific intents (image/tool/search),
-tighter math, all headers commented for clean runs
+# Grok-tuned degen intent classifier v2
+# Original: Rfwalsh1998 (Unlicense / public domain)
+# Tweaks: balanced code gen, Grok-specific intents (image/tool/search),
+# tighter math, all headers commented for clean runs
+
 set -euo pipefail
-RAW_INPUT="
-∗:−"if[[−z"{*:-}" if [[ -z "∗:−"if[[−z" {RAW_INPUT// }" && ! -t 0 ]]; then
-RAW_INPUT="$(cat)"
+
+RAW_INPUT="${*:-}"
+if [[ -z "${RAW_INPUT// }" && ! -t 0 ]]; then
+    RAW_INPUT="$(cat)"
 fi
-RAW_INPUT="
-'\r'/}"
-RAW_INPUT=" '\n'/ }"
+
+RAW_INPUT="${RAW_INPUT//$'\r'/ }"
+RAW_INPUT="${RAW_INPUT//$'\n'/ }"
+
 if [[ -z "${RAW_INPUT// }" ]]; then
-echo "usage: $0 "your prompt here""
-exit 1
+    echo "usage: $0 \"your prompt here\""
+    exit 1
 fi
+
 lower() {
-tr '[:upper:]' '[:lower:]'
+    tr '[:upper:]' '[:lower:]'
 }
+
 normalize() {
-local s="
-1"s="1" s="1"s=" (printf '%s' " s"∣lower)"s="s" | lower)" s="s"∣lower)"s=" {s//_/ }"
-s=" (printf′(printf '%s' "(printf′ s" | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ + //′)"printf′//')" printf ' %s ' "//′)"printf′ s"
+    local s="$1"
+    s="$(printf '%s' "$s" | lower)"
+    s="${s//_/ }"
+    s="$(printf '%s' "$s" | sed -E 's/[[:space:]]+/ /g; s/^ +//; s/ +$//')"
+    printf ' %s ' "$s"
 }
-TEXT="
-(normalize"(normalize "(normalize" RAW_INPUT")"
-RAW_FLAT=" RAWINPUT"RAWFLAT="RAW_INPUT" RAW_FLAT="RAWI​NPUT"RAWF​LAT=" {RAW_FLAT// {RAW_FLAT//$'\n'/ }"
+
+TEXT="$(normalize "$RAW_INPUT")"
+RAW_FLAT="$RAW_INPUT"
+RAW_FLAT="${RAW_FLAT//$'\r'/ }"
+RAW_FLAT="${RAW_FLAT//$'\n'/ }"
+
 INTENTS=(
-greeting smalltalk explanation how_to tutoring factual_lookup current_events
-code_generation debugging devops shell_command sql_data math translation
-rewrite_edit summarize extraction classification comparison brainstorming
-recommendation shopping planning scheduling email_message legal_info
-finance_info health_info creative_writing roleplay prompt_engineering
-jailbreak_meta image_generation web_or_x_search tool_usage
-sentiment_support complaint chitchat_chaos decision_support
+    greeting smalltalk explanation how_to tutoring factual_lookup current_events
+    code_generation debugging devops shell_command sql_data math translation
+    rewrite_edit summarize extraction classification comparison brainstorming
+    recommendation shopping planning scheduling email_message legal_info
+    finance_info health_info creative_writing roleplay prompt_engineering
+    jailbreak_meta image_generation web_or_x_search tool_usage
+    sentiment_support complaint chitchat_chaos decision_support
 )
-declare -A SCORE WHY
-for k in "
-INTENTS[@]";doSCORE["{INTENTS[@]}"; do SCORE["INTENTS[@]";doSCORE[" k"]=0
-WHY["$k"]=""
+
+declare -A SCORE
+declare -A WHY
+for k in "${INTENTS[@]}"; do
+    SCORE["$k"]=0
+    WHY["$k"]=""
 done
+
 bump() {
-local intent="
-1"localweight="1" local weight="1"localweight=" 2"
-local reason=" 3"SCORE["3" SCORE["3"SCORE[" intent"]= ((SCORE["(( SCORE["((SCORE[" intent"] + weight ))
-WHY[" intent"]+="intent"]+="intent"]+=" {reason}(+${weight});"
+    local intent="$1"
+    local weight="$2"
+    local reason="$3"
+    SCORE["$intent"]=$(( SCORE["$intent"] + weight ))
+    WHY["$intent"]+="${reason}(+${weight});"
 }
+
 hit() {
-local intent="
-1"localweight="1" local weight="1"localweight=" 2"
-local regex=" 3"localreason="3" local reason="3"localreason=" 4"
-if [[ "$TEXT" =~ regex]];thenbump"regex ]]; then bump "regex]];thenbump" intent" " weight""weight" "weight"" reason"
-fi
+    local intent="$1"
+    local weight="$2"
+    local regex="$3"
+    local reason="$4"
+    if [[ "$TEXT" =~ $regex ]]; then
+        bump "$intent" "$weight" "$reason"
+    fi
 }
+
 hit_raw() {
-local intent="
-1"localweight="1" local weight="1"localweight=" 2"
-local regex=" 3"localreason="3" local reason="3"localreason=" 4"
-if [[ "$RAW_FLAT" =~ regex]];thenbump"regex ]]; then bump "regex]];thenbump" intent" " weight""weight" "weight"" reason"
-fi
+    local intent="$1"
+    local weight="$2"
+    local regex="$3"
+    local reason="$4"
+    if [[ "$RAW_FLAT" =~ $regex ]]; then
+        bump "$intent" "$weight" "$reason"
+    fi
 }
-Greeting / smalltalk / chaos
+
+# Greeting / smalltalk / chaos
 hit greeting 5 '(^|[[:space:][:punct:]])(hi|hello|hey|yo|sup|howdy|hola|heya|greetings)([[:space:][:punct:]]|$)' 'greeting_word'
 hit smalltalk 4 '(how are you|how.?s it going|what.?s up|wyd|u there|you good|how have you been)' 'smalltalk_probe'
 hit chitchat_chaos 5 '(lol|lmao|rofl|wtf|omg|brainrot|cursed|degenerate|unhinged|shitpost|meme)' 'chaos_lexicon'
-Explanation / factual lookup / current events
+
+# Explanation / factual lookup / current events
 hit explanation 6 '(what is|what are|explain|explain like i.?m 5|eli5|tell me about|meaning of|define)' 'explanation_phrase'
 hit factual_lookup 5 '(who is|when did|where is|which country|population of|capital of|net worth|founder of)' 'fact_phrase'
 hit current_events 8 '(latest|recent|today|this week|currently|current|breaking news|news about|what happened)' 'currentness'
-How-to / tutoring
+
+# How-to / tutoring
 hit how_to 7 '(how to|how do i|steps to|walk me through|guide me|tutorial|setup|install|configure)' 'instruction_phrase'
 hit tutoring 6 '(teach me|quiz me|help me learn|practice problems|explain step by step|lesson plan)' 'learning_phrase'
-Code / debug / devops / shell / sql
+
+# Code / debug / devops / shell / sql
 hit code_generation 8 '(write|make|build|generate|implement|create|code|script|function|class|module|program)' 'coding_verb'
 hit code_generation 4 '(python|bash|shell|javascript|typescript|node|java|c++|c#|rust|go|golang|ruby|php|scala|kotlin|swift|regex|html|css)' 'language_mention'
 hit debugging 10 '(error|bug|debug|fix|fails|failing|doesn.?t work|not working|broken|exception|traceback|stack trace|segfault|crash|hangs?)' 'debug_terms'
@@ -79,93 +103,108 @@ hit debugging 6 '(why.*(fail|broken|not work|error)|how do i fix|what.?s wrong w
 hit devops 7 '(docker|kubernetes|k8s|helm|terraform|ansible|jenkins|github actions|gitlab ci|nginx|systemd|aws|gcp|azure|cloudformation)' 'devops_stack'
 hit shell_command 9 '(one[- ]liner|shell command|bash command|terminal command|cli command|awk|sed|grep|xargs|find |curl |wget )' 'shellish'
 hit sql_data 8 '(select|from|where|group by|order by|join|sql|postgres|mysql|sqlite|bigquery|duckdb|pandas|dataframe)' 'data_query'
-Math
+
+# Math
 hit math 8 '(calculate|solve|integral|derivative|equation|matrix|probability|combinatorics|algebra|geometry|statistics|standard deviation)' 'math_words'
 hit_raw math 8 '[0-9]+[[:space:]][-+/^=][[:space:]]*[0-9]+' 'math_operator'
-Translation / rewrite / summarize / extraction / classification
+
+# Translation / rewrite / summarize / extraction / classification
 hit translation 10 '(translate|in spanish|in french|in german|in japanese|in chinese|what does .* mean in)' 'translation_request'
 hit rewrite_edit 8 '(rewrite|rephrase|paraphrase|polish|improve this|edit this|fix grammar|make this clearer|make this more professional)' 'rewrite_phrase'
 hit summarize 10 '(summarize|summary|tl;dr|tldr|condense|give me the gist|key points)' 'summary_phrase'
 hit extraction 8 '(extract|pull out|find all|list every|entities|keywords|json schema|structured output|parse this)' 'extraction_phrase'
 hit classification 7 '(classify|label|categorize|tag this|intent|sentiment analysis|route this)' 'classification_phrase'
-Compare / brainstorm / recommend / shopping / decisions
+
+# Compare / brainstorm / recommend / shopping / decisions
 hit comparison 9 '(compare|vs.?|versus|difference between|pros and cons|which is better|better than)' 'comparison_phrase'
 hit brainstorming 9 '(brainstorm|ideas for|give me ideas|names for|topics for|prompts for|come up with)' 'ideation_phrase'
 hit recommendation 9 '(recommend|suggest|best way|best tool|best option|what should i use|pick one)' 'recommendation_phrase'
 hit shopping 10 '(buy|purchase|price|deal|under $?[0-9]+|budget|best .* under|review|headphones|laptop|phone|monitor|keyboard|chair)' 'shopping_terms'
 hit decision_support 8 '(should i|help me choose|which one should i pick|is it worth it|worth it|decide between)' 'decision_phrase'
-Planning / scheduling / email
+
+# Planning / scheduling / email
 hit planning 8 '(plan|itinerary|roadmap|strategy|timeline|milestones|next steps|project plan|study plan|meal plan|trip plan)' 'planning_terms'
 hit scheduling 10 '(schedule|calendar|meeting|book time|availability|when am i free|reschedule|tomorrow at|next monday|invite)' 'schedule_terms'
 hit email_message 10 '(write an email|draft an email|reply to this email|subject line|slack message|dm|text message|cover letter|follow-up email)' 'message_terms'
-Legal / finance / health
+
+# Legal / finance / health
 hit legal_info 7 '(contract|nda|terms of service|tos|privacy policy|legal|law|copyright|trademark|liability|indemnif)' 'legal_terms'
 hit finance_info 7 '(stock|stocks|etf|index fund|interest rate|apr|mortgage|loan|credit card|budgeting|tax|taxes|investing|portfolio|crypto)' 'finance_terms'
 hit health_info 7 '(symptom|symptoms|diagnosis|treatment|side effect|dosage|medicine|medication|injury|pain|anxiety|depression|diet|workout)' 'health_terms'
-Creative / roleplay / prompt engineering / jailbreak
+
+# Creative / roleplay / prompt engineering / jailbreak
 hit creative_writing 10 '(write a story|write a poem|poem|song lyrics|screenplay|scene|dialogue|fanfic|worldbuilding|character sheet|plot twist|lore)' 'creative_terms'
 hit roleplay 10 '(pretend to be|act as|roleplay|you are now|simulate being|in character as|speak like)' 'roleplay_terms'
 hit prompt_engineering 9 '(prompt|system prompt|few-shot|chain of thought|cot|instruction tuning|prompt engineer|rubric|classifier)' 'prompt_terms'
 hit jailbreak_meta 12 '(ignore previous instructions|ignore all prior|jailbreak|dan|developer mode|reveal system prompt|bypass policy|policy workaround)' 'meta_terms'
-=== Grok-specific intents ===
-hit image_generation 12 '(generate.image|draw|create.(picture|art|image)|imagine|visualize|grok imagine|render|picture of|photo of)' 'grok_image_terms'
+
+# Grok-specific intents
+hit image_generation 12 '(generate.*image|draw|create.*(picture|art|image)|imagine|visualize|grok imagine|render|picture of|photo of)' 'grok_image_terms'
 hit web_or_x_search 10 '(search (the )?(web|x|twitter)|what.*(on x|elon|musk)|latest (tweet|post)|check x for|x search|browse x)' 'grok_search_terms'
 hit tool_usage 9 '(use (your|the) (tools?|search|tool)|call (a )?tool|web search| x search|view image|code execution|search_images)' 'tool_terms'
-Support / complaint
+
+# Support / complaint
 hit sentiment_support 8 '(i feel|i am feeling|i.?m stressed|i.?m overwhelmed|i.?m sad|panic attack|burned out|need support|need advice)' 'support_terms'
 hit complaint 8 '(this sucks|i hate|frustrated|annoyed|complaint|rant|why is .* so bad|terrible experience)' 'complaint_terms'
-Secondary pattern interactions
-if [[ "$TEXT" =~ ? ]]; then
-bump explanation 1 'question_mark'
-bump factual_lookup 1 'question_mark'
-bump how_to 1 'question_mark'
+
+# Secondary pattern interactions
+if [[ "$TEXT" =~ \? ]]; then
+    bump explanation 1 'question_mark'
+    bump factual_lookup 1 'question_mark'
+    bump how_to 1 'question_mark'
 fi
-if [[ "
-TEXT" =~ (script|function|class|api|regex|parser|cli|bot|query|sql|code|program) ]]; then
-bump code_generation 7 'imperative_plus_code_noun'
+
+if [[ "$TEXT" =~ (write|make|build|generate|implement|create) ]] && [[ "$TEXT" =~ (script|function|class|api|regex|parser|cli|bot|query|sql|code|program) ]]; then
+    bump code_generation 7 'imperative_plus_code_noun'
 fi
-if [[ "
-TEXT" =~ (fail|fails|failing|broken|error|not[[:space:]]+working|wrong) ]]; then
-bump debugging 8 'why_plus_failure'
+
+if [[ "$TEXT" =~ why ]] && [[ "$TEXT" =~ (fail|fails|failing|broken|error|not[[:space:]]+working|wrong) ]]; then
+    bump debugging 8 'why_plus_failure'
 fi
+
 if [[ "$TEXT" =~ (bash|shell|terminal|grep|sed|awk|xargs|find|curl|jq) ]]; then
-bump shell_command 4 'shell_stack'
+    bump shell_command 4 'shell_stack'
 fi
+
 if [[ "$TEXT" =~ (csv|json|jsonl|xml|yaml|parse|transform|clean|normalize|table|dataset|etl) ]]; then
-bump extraction 3 'structured_data'
-bump sql_data 3 'structured_data'
+    bump extraction 3 'structured_data'
+    bump sql_data 3 'structured_data'
 fi
-if [[ "
-TEXT" =~ (best|recommend|should i|pick|choose|worth it) ]]; then
-bump decision_support 7 'compare_plus_decide'
+
+if [[ "$TEXT" =~ (vs|versus|compare|difference) ]] && [[ "$TEXT" =~ (best|recommend|should i|pick|choose|worth it) ]]; then
+    bump decision_support 7 'compare_plus_decide'
 fi
+
 if [[ "$TEXT" =~ (monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|next[[:space:]]+week|next[[:space:]]+month|q[1-4]|202[0-9]|203[0-9]) ]]; then
-bump planning 2 'date_mention'
-bump scheduling 2 'date_mention'
-bump current_events 1 'date_mention'
+    bump planning 2 'date_mention'
+    bump scheduling 2 'date_mention'
+    bump current_events 1 'date_mention'
 fi
-if [[ "
-TEXT" =~ (act as|pretend to be|you are now|roleplay) ]]; then
-bump roleplay 4 'creative_roleplay_overlap'
-bump creative_writing 4 'creative_roleplay_overlap'
+
+if [[ "$TEXT" =~ (story|scene|character|dialogue|poem|monologue) ]] && [[ "$TEXT" =~ (act as|pretend to be|you are now|roleplay) ]]; then
+    bump roleplay 4 'creative_roleplay_overlap'
+    bump creative_writing 4 'creative_roleplay_overlap'
 fi
-if [[ "
-TEXT" =~ (email|message|dm|slack|text|linkedin) ]]; then
-bump email_message 8 'compose_message_overlap'
+
+if [[ "$TEXT" =~ (write|draft|compose|respond|reply) ]] && [[ "$TEXT" =~ (email|message|dm|slack|text|linkedin) ]]; then
+    bump email_message 8 'compose_message_overlap'
 fi
-if [[ "
-TEXT" =~ (image|picture|art|photo|visualize) ]]; then
-bump image_generation 6 'image_verb_noun_overlap'
+
+if [[ "$TEXT" =~ (image|picture|art|photo|visualize) ]]; then
+    bump image_generation 6 'image_verb_noun_overlap'
 fi
+
 for x in legal_info health_info finance_info; do
-if (( SCORE["
-x"]>0));thenbumpexplanation1"x"] > 0 )); then bump explanation 1 "x"]>0));thenbumpexplanation1" {x}_leans_explanation"
-fi
+    if (( SCORE["$x"] > 0 )); then
+        bump explanation 1 "${x}_leans_explanation"
+    fi
 done
+
 if [[ "$TEXT" =~ (latest|current|today|recent) ]]; then
-bump factual_lookup 2 'freshness_modifier'
-bump current_events 4 'freshness_modifier'
+    bump factual_lookup 2 'freshness_modifier'
+    bump current_events 4 'freshness_modifier'
 fi
+
 hit code_generation 3 '(can you|could you|please).(write|make|build|generate)' 'polite_codegen'
 hit how_to 3 '(can you|could you|please).(show me|walk me through|help me)' 'polite_howto'
 hit summarize 4 '(too long|long article|transcript|meeting notes|summaris?e this)' 'long_text_signal'
@@ -175,64 +214,78 @@ hit brainstorming 4 '(10 ideas|20 ideas|lots of ideas|many ideas|as many as poss
 hit shopping 4 '(best buy|amazon|newegg|price history|discount|coupon)' 'commerce_sites'
 hit creative_writing 4 '(write in the style of|epic|cinematic|grimdark|romcom|cyberpunk|fantasy)' 'creative_style'
 hit jailbreak_meta 5 '(ignore safety|uncensored|no restrictions|without rules)' 'policy_evasion_signal'
-Priors / tie-breaks
+
+# Priors / tie-breaks
 if [[ "$TEXT" =~ (python|bash|javascript|typescript|java|c++|sql|regex) ]] && (( SCORE[debugging] < 8 )); then
-bump code_generation 2 'language_prior'
+    bump code_generation 2 'language_prior'
 fi
-if [[ "
-TEXT" =~ (python|bash|docker|sql|javascript|typescript|java|c++|kubernetes|nginx|api) ]]; then
-bump debugging 6 'tool_plus_failure'
+
+if [[ "$TEXT" =~ (error|traceback|stack[[:space:]]+trace|exception|not[[:space:]]+working|failing) ]] && [[ "$TEXT" =~ (python|bash|docker|sql|javascript|typescript|java|c++|kubernetes|nginx|api) ]]; then
+    bump debugging 6 'tool_plus_failure'
 fi
-ONLY_SHORT="
-(printf′(printf '%s' "(printf′ TEXT" | sed -E 's/[^a-z ]//g; s/[[:space:]]+/ /g; s/^ +//; s/ + //′)"if[["//')" if [[ "//′)"if[[" ONLY_SHORT" =~ ^(hi|hello|hey|yo|sup|howdy|hola|heya|thanks|thank you)$ ]]; then
-bump greeting 20 'pure_greeting'
+
+ONLY_SHORT="$(printf '%s' "$TEXT" | sed -E 's/[^a-z ]//g; s/[[:space:]]+/ /g; s/^ +//; s/ +$//')"
+if [[ "$ONLY_SHORT" =~ ^(hi|hello|hey|yo|sup|howdy|hola|heya|thanks|thank you)$ ]]; then
+    bump greeting 20 'pure_greeting'
 fi
+
 score_lines() {
-for k in "
-INTENTS[@]";doprintf′{INTENTS[@]}"; do printf '%s\t%s\n' "INTENTS[@]";doprintf′ {SCORE[ k"
-done | sort -rn -k1,1 -k2,2
+    local k
+    for k in "${INTENTS[@]}"; do
+        printf '%s\t%s\n' "${SCORE[$k]}" "$k"
+    done | sort -rn -k1,1 -k2,2
 }
+
 PRIMARY_INTENT='unknown'
 PRIMARY_SCORE=0
 SECONDARY=()
-while IFS=
-PRIMARY_INTENT" == 'unknown' ]] && (( sc > 0 )); then
-PRIMARY_INTENT=" name"PRIMARYSCORE="name" PRIMARY_SCORE="name"PRIMARYS​CORE=" sc"
-fi
-if (( sc > 0 )); then
-SECONDARY+=(" name:{name}:name: {sc}")
-fi
+while IFS=$'\t' read -r sc name; do
+    if [[ "$PRIMARY_INTENT" == 'unknown' ]] && (( sc > 0 )); then
+        PRIMARY_INTENT="$name"
+        PRIMARY_SCORE="$sc"
+    fi
+    if (( sc > 0 )); then
+        SECONDARY+=("${name}:${sc}")
+    fi
 done < <(score_lines)
-if [[ "
-PRIMARYINTENT"==′unknown′∣∣"PRIMARY_INTENT" == 'unknown' || "PRIMARYI​NTENT"==′unknown′∣∣" PRIMARY_SCORE" -le 0 ]]; then
-if [[ "$TEXT" =~ ? ]]; then
-PRIMARY_INTENT='explanation'
-PRIMARY_SCORE=1
-SECONDARY=('explanation:1')
-else
-PRIMARY_INTENT='chitchat_chaos'
-PRIMARY_SCORE=1
-SECONDARY=('chitchat_chaos:1')
+
+if [[ "$PRIMARY_INTENT" == 'unknown' || $PRIMARY_SCORE -le 0 ]]; then
+    if [[ "$TEXT" =~ \? ]]; then
+        PRIMARY_INTENT='explanation'
+        PRIMARY_SCORE=1
+        SECONDARY=('explanation:1')
+    else
+        PRIMARY_INTENT='chitchat_chaos'
+        PRIMARY_SCORE=1
+        SECONDARY=('chitchat_chaos:1')
+    fi
 fi
-fi
+
 TOP_INTENTS=()
 count=0
-for item in "
-SECONDARY[@]";doTOPINTENTS+=("{SECONDARY[@]}"; do TOP_INTENTS+=("SECONDARY[@]";doTOPI​NTENTS+=(" item")
-count=$((count + 1))
-if (( count >= 3 )); then
-break
-fi
+for item in "${SECONDARY[@]}"; do
+    TOP_INTENTS+=("$item")
+    count=$((count + 1))
+    if (( count >= 3 )); then
+        break
+    fi
 done
-printf 'PRIMARY_INTENT=%s\n' "
-PRIMARYINTENT"printf′PRIMARYSCORE=PRIMARY_INTENT" printf 'PRIMARY_SCORE=%s\n' "PRIMARYI​NTENT"printf′PRIMARYS​CORE= PRIMARY_SCORE"
+
+printf 'PRIMARY_INTENT=%s\n' "$PRIMARY_INTENT"
+printf 'PRIMARY_SCORE=%s\n' "$PRIMARY_SCORE"
 printf 'TOP_INTENTS=%s\n' "${TOP_INTENTS[*]}"
+
 printf 'ALL_SCORES='
 first=1
-while IFS=
-name" " sc"first=0elseprintf′sc" first=0 else printf ' %s:%s' "sc"first=0elseprintf′ name" "$sc"
-fi
+while IFS=$'\t' read -r sc name; do
+    (( sc <= 0 )) && continue
+    if (( first )); then
+        printf '%s:%s' "$name" "$sc"
+        first=0
+    else
+        printf ' %s:%s' "$name" "$sc"
+    fi
 done < <(score_lines)
 printf '\n'
-printf 'WHY=%s\n' "
-PRIMARY_INTENT]}"
+
+printf 'WHY=%s\n' "${WHY[$PRIMARY_INTENT]}"
