@@ -96,7 +96,7 @@ hit tutoring 6 '(teach me|quiz me|help me learn|practice problems|explain step b
 
 # Code / debug / devops / shell / sql
 hit code_generation 8 '(write|make|build|generate|implement|create|code|script|function|class|module|program)' 'coding_verb'
-hit code_generation 4 '(python|bash|shell|javascript|typescript|node|java|c++|c#|rust|go|golang|ruby|php|scala|kotlin|swift|regex|html|css)' 'language_mention'  # lowered weight
+hit code_generation 4 '(python|bash|shell|javascript|typescript|node|java|c++|c#|rust|go|golang|ruby|php|scala|kotlin|swift|regex|html|css)' 'language_mention'  # lowered
 hit debugging 10 '(error|bug|debug|fix|fails|failing|doesn.?t work|not working|broken|exception|traceback|stack trace|segfault|crash|hangs?)' 'debug_terms'
 hit debugging 6 '(why.*(fail|broken|not work|error)|how do i fix|what.?s wrong with)' 'debug_question'
 hit devops 7 '(docker|kubernetes|k8s|helm|terraform|ansible|jenkins|github actions|gitlab ci|nginx|systemd|aws|gcp|azure|cloudformation)' 'devops_stack'
@@ -105,7 +105,7 @@ hit sql_data 8 '(select|from|where|group by|order by|join|sql|postgres|mysql|sql
 
 # Math
 hit math 8 '(calculate|solve|integral|derivative|equation|matrix|probability|combinatorics|algebra|geometry|statistics|standard deviation)' 'math_words'
-hit_raw math 8 '[0-9]+[[:space:]]*[-+*/^=][[:space:]]*[0-9]+' 'math_operator'  # tighter, no date/version false positives
+hit_raw math 8 '[0-9]+[[:space:]]*[-+*/^=][[:space:]]*[0-9]+' 'math_operator'  # tighter
 
 # Translation / rewrite / summarize / extraction / classification
 hit translation 10 '(translate|in spanish|in french|in german|in japanese|in chinese|what does .* mean in)' 'translation_request'
